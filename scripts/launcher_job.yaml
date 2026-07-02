@@ -1,0 +1,18 @@
+# launcher.yaml periodic job entry for ORDS weekly scrape.
+# Add this under periodic_jobs in your launcher.yaml.
+# Schedule: every Friday 09:00 local time.
+#
+# periodic_jobs:
+#   - label: ords-weekly-scrape
+#     schedule: "0 9 * * 5"
+#     command:
+#       - /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper/scripts/run_periodic.sh
+#     cwd: /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper
+#     timeout: 600
+
+label: ords-weekly-scrape
+schedule: "0 9 * * 5"
+command:
+  - /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper/scripts/run_periodic.sh
+cwd: /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper
+timeout: 600
