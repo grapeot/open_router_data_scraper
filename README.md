@@ -64,10 +64,6 @@ ords dashboard --top 10                       # 对比 Top-10 模型
 
 从 SQLite 读取数据并生成 PNG 图表（prompt tokens + completion tokens 双图）。
 
-## 定期运行
-
-每周执行一次 `ords archive --top 20` 即可累积历史数据。具体部署方案见 [docs/deployment.md](docs/deployment.md)。
-
 ## 数据字段
 
 每次抓取包含以下字段（每天一条记录）：
