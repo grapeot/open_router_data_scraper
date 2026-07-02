@@ -53,5 +53,5 @@ ords dashboard --top 10              # 生成 PNG 图表
 | 短 slug 不被 model-activity 接受 | 返回空数组 | CLI 自动解析 canonical_slug（末尾 8 位日期）；手动传时需用 canonical_slug |
 | rankings/models 的 reasoning/cached 为 0 | 补全层数据与批量层不一致 | 补全层（model-activity）覆盖补全，PK 去重保证只保留有值的版本 |
 | OpenCode submit 阻塞 | `--send-timeout 300` 导致脚本等 5 分钟 | 用 `--send-timeout 5`，session 已创建即可 |
-| 邮件发到 Resend receiving address | 邮件到了 `@example.resend.app` 而非用户邮箱 | `--to` 硬编码用户实际收件箱（Outlook），正文用中文 |
+| 邮件发到 Resend receiving address | 邮件到了 `@example.resend.app` 而非用户邮箱 | `--to` 用 `ORDS_NOTIFY_EMAIL` 环境变量，正文用中文 |
 | rankings/models?view=month 返回累积值 | 数字比实际大 12 倍 | 用 `view=day` 拿当天实际值，不用 view=month/week |

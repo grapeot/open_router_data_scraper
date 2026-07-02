@@ -2,17 +2,33 @@
 # Add this under periodic_jobs in your launcher.yaml.
 # Schedule: every Friday 09:00 local time.
 #
+# Environment variables needed:
+#   OPENCODE_SKILL_DIR  — absolute path to opencode_skill project
+#   RESEND_SKILL_DIR    — absolute path to resend_email_skill project
+#   ORDS_NOTIFY_EMAIL   — your email address for failure notifications
+#
+# Example:
+#
 # periodic_jobs:
-#   - label: ords-weekly-scrape
-#     schedule: "0 9 * * 5"
+#   ords_weekly_scrape:
+#     label: ords_weekly_scrape
 #     command:
-#       - /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper/scripts/run_periodic.sh
-#     cwd: /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper
+#       - /path/to/open_router_data_scraper/scripts/run_periodic.sh
+#     cwd: /path/to/open_router_data_scraper
+#     env:
+#       OPENCODE_SKILL_DIR: /path/to/opencode_skill
+#       RESEND_SKILL_DIR: /path/to/resend_email_skill
+#       ORDS_NOTIFY_EMAIL: your-email@example.com
+#     schedule:
+#       type: weekly
+#       days_of_week: [fri]
+#       time: "09:00"
+#       timezone: America/Los_Angeles
 #     timeout: 600
 
-label: ords-weekly-scrape
-schedule: "0 9 * * 5"
-command:
-  - /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper/scripts/run_periodic.sh
-cwd: /Users/grapeot/co/knowledge_working/adhoc_jobs/open_router_data_scraper
+label: ords_weekly_scrape
+schedule: weekly
+days_of_week: [fri]
+time: "09:00"
+timezone: America/Los_Angeles
 timeout: 600

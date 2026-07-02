@@ -30,7 +30,7 @@ OpenRouter 是目前衡量 LLM 市场欢迎度最好的公开代理指标（月�
 - **触发方式**: Background Process Manager 的 `periodic_jobs`（launcher.yaml 声明式），每周五 09:00 本地时间
 - **执行方式**: 调用 `opencode_skill submit` 启动 OpenCode session，session 自动完成 archive + snapshot → sanity check → dashboard → 邮件通知
 - **成功时**: 静默，不发邮件
-- **失败时**: session 自行调查、尝试修复，不论修复成功与否都发邮件到 `grapeot@outlook.com`
+- **失败时**: session 自行调查、尝试修复，不论修复成功与否都发邮件通知（收件人由 `ORDS_NOTIFY_EMAIL` 环境变量指定）
 - **dry run 时**: 不论成功失败都发邮件（验证邮件通道）
 
 ## 非目标

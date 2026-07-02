@@ -6,7 +6,8 @@
 
 - 你的工作目录是 `adhoc_jobs/open_router_data_scraper/`
 - 使用项目 `.venv` 中的 `ords` CLI
-- 邮件发送使用 Resend Email Skill，位于 `/Users/grapeot/co/knowledge_working/adhoc_jobs/resend_email_skill/`
+- 邮件发送使用 Resend Email Skill，路径由环境变量 `RESEND_SKILL_DIR` 指定（如未设置则默认 `../resend_email_skill/`）
+- 邮件收件人由环境变量 `ORDS_NOTIFY_EMAIL` 指定
 
 ## 运行模式
 
@@ -20,7 +21,7 @@
 .venv/bin/ords archive --top 20
 ```
 
-这会执行两层抓取：批量层（rankings/models，400+ 模型 17 天）+ 补全层（top-20 model-activity，含 reasoning/cached）。记录总新增行数。
+这会执行两层抓取：批量层（rankings/models view=day，415 模型当天）+ 补全层（top-20 model-activity，含 reasoning/cached，31 天历史）。记录总新增行数。
 
 ### 2. 抓取快照和图表
 
@@ -62,12 +63,13 @@
 
 ### 邮件发送
 
-发到 `grapeot@outlook.com`（不是 Resend 的 receiving address）：
+发到 `ORDS_NOTIFY_EMAIL` 环境变量指定的收件人（不是 Resend 的 receiving address）：
 
 ```bash
-cd /Users/grapeot/co/knowledge_working/adhoc_jobs/resend_email_skill
+RESEND_DIR="${RESEND_SKILL_DIR:-../resend_email_skill}"
+cd "${RESEND_DIR}"
 op run --env-file=.env -- .venv/bin/python -m resend_email_skill.cli send \
-  --to "grapeot@outlook.com" \
+  --to "${ORDS_NOTIFY_EMAIL}" \
   --subject "[ORDS] Weekly Scrape <Status>" \
   --body-file /tmp/ords_report.md \
   --body-format markdown \

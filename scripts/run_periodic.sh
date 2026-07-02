@@ -6,12 +6,17 @@
 # Usage:
 #   ./scripts/run_periodic.sh           # normal weekly run (silent on success)
 #   ORDS_DRY_RUN=1 ./scripts/run_periodic.sh  # dry run (always sends email)
+#
+# Environment variables (set in launcher.yaml or .env):
+#   OPENCODE_SKILL_DIR  — path to opencode_skill project (required)
+#   RESEND_SKILL_DIR    — path to resend_email_skill project (passed to OpenCode session)
+#   ORDS_NOTIFY_EMAIL   — email address for notifications (passed to OpenCode session)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-OPENCODE_SKILL_DIR="/Users/grapeot/co/knowledge_working/adhoc_jobs/opencode_skill"
+OPENCODE_SKILL_DIR="${OPENCODE_SKILL_DIR:?OPENCODE_SKILL_DIR is required}"
 PROMPT_TEMPLATE="${PROJECT_DIR}/prompts/weekly_scrape.md"
 TITLE="ORDS Weekly Scrape"
 
