@@ -6,8 +6,8 @@
 
 - 你的工作目录是 `adhoc_jobs/open_router_data_scraper/`
 - 使用项目 `.venv` 中的 `ords` CLI
-- 邮件发送使用 Resend Email Skill，路径由环境变量 `RESEND_SKILL_DIR` 指定（如未设置则默认 `../resend_email_skill/`）
-- 邮件收件人由环境变量 `ORDS_NOTIFY_EMAIL` 指定
+- 邮件发送使用 Resend Email Skill：`{{RESEND_SKILL_DIR}}`
+- 邮件收件人：`{{ORDS_NOTIFY_EMAIL}}`
 
 ## 运行模式
 
@@ -66,7 +66,8 @@
 发到 `ORDS_NOTIFY_EMAIL` 环境变量指定的收件人（不是 Resend 的 receiving address）：
 
 ```bash
-RESEND_DIR="${RESEND_SKILL_DIR:-../resend_email_skill}"
+RESEND_DIR="{{RESEND_SKILL_DIR}}"
+ORDS_NOTIFY_EMAIL="{{ORDS_NOTIFY_EMAIL}}"
 cd "${RESEND_DIR}"
 op run --env-file=.env -- .venv/bin/python -m resend_email_skill.cli send \
   --to "${ORDS_NOTIFY_EMAIL}" \

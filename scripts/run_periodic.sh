@@ -17,6 +17,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OPENCODE_SKILL_DIR="${OPENCODE_SKILL_DIR:?OPENCODE_SKILL_DIR is required}"
+RESEND_SKILL_DIR="${RESEND_SKILL_DIR:-${PROJECT_DIR}/../resend_email_skill}"
+ORDS_NOTIFY_EMAIL="${ORDS_NOTIFY_EMAIL:?ORDS_NOTIFY_EMAIL is required}"
 PROMPT_TEMPLATE="${PROJECT_DIR}/prompts/weekly_scrape.md"
 TITLE="ORDS Weekly Scrape"
 
@@ -31,7 +33,18 @@ else
   MODE="**当前是正常每周定时任务模式。** 成功时不发邮件，失败时调查、修复并发邮件。"
 fi
 
-sed "s|{{MODE_DESCRIPTION}}|${MODE}|" "${PROMPT_TEMPLATE}" > "${RENDERED_PROMPT}"
+for value in "${MODE}" "${RESEND_SKILL_DIR}" "${ORDS_NOTIFY_EMAIL}"; do
+  if [[ "${value}" == *"|"* ]]; then
+    echo "Rendered prompt values must not contain '|'" >&2
+    exit 1
+  fi
+done
+
+sed \
+  -e "s|{{MODE_DESCRIPTION}}|${MODE}|" \
+  -e "s|{{RESEND_SKILL_DIR}}|${RESEND_SKILL_DIR}|g" \
+  -e "s|{{ORDS_NOTIFY_EMAIL}}|${ORDS_NOTIFY_EMAIL}|g" \
+  "${PROMPT_TEMPLATE}" > "${RENDERED_PROMPT}"
 
 cd "${OPENCODE_SKILL_DIR}"
 
