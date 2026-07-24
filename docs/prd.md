@@ -18,8 +18,8 @@ OpenRouter 是目前衡量 LLM 市场欢迎度最好的公开代理指标（月�
 1. **discover** — 列出 Top-N 模型（默认 20）
 2. **fetch** — 抓取单模型逐日用量并打印
 3. **archive** — 两层抓取存入 SQLite：
-   - 层 1（批量）：`rankings/models?view=month`，一次请求获取全 400+ 模型 17 天数据
-   - 层 2（补全）：对 Top-20 逐个请求 `model-activity`，补全 reasoning/cached 字段
+   - 层 1（批量）：`rankings/models?view=day`，一次请求获取 400+ 模型前一日数据
+   - 层 2（补全）：对 Top-20 逐个请求 `model-activity`，补全 31 天 reasoning/cached 字段
 4. **snapshot** — 抓取所有快照端点（task-spend/performance/benchmarks/apps）+ 图表时间序列
 5. **query** — 从 SQLite 查询历史数据
 6. **models** — 列出 DB 中已追踪模型

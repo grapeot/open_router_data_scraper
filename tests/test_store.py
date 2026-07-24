@@ -8,11 +8,14 @@ from open_router_data_scraper.client import ActivityRow, ChartPoint
 from open_router_data_scraper.store import Storage
 
 
-def _act(date="2026-07-02 00:00:00", slug="z-ai/glm-5.2-20260616", variant="standard", count=1000):
+def _act(
+    date="2026-07-02 00:00:00", slug="z-ai/glm-5.2-20260616",
+    variant="standard", count=1000, reasoning=1_000,
+):
     return ActivityRow(
         date=date, model_permaslug=slug, variant=variant,
         total_prompt_tokens=100_000, total_completion_tokens=5_000,
-        total_native_tokens_reasoning=1_000, total_native_tokens_cached=80_000,
+        total_native_tokens_reasoning=reasoning, total_native_tokens_cached=80_000,
         count=count, total_tool_calls=200, requests_with_tool_call_errors=5,
         num_media_prompt=0, num_media_completion=0, image_output_requests=0,
         num_video_prompt=0, video_output_seconds=0, rerank_documents=0,
@@ -44,6 +47,23 @@ class TestUpsertActivity:
     def test_partial_dedup(self, store):
         store.upsert_activity([_act(date="2026-07-01 00:00:00")])
         assert store.upsert_activity([_act(date="2026-07-01 00:00:00"), _act(date="2026-07-02 00:00:00")]) == 1
+
+    def test_supplement_enriches_batch_without_counting_new_row(self, store):
+        store.upsert_activity([_act(reasoning=0)])
+        assert store.upsert_activity(
+            [_act(reasoning=2_000, count=2_000)], enrich_existing=True
+        ) == 0
+        row = store.query_activity()[0]
+        assert row["total_native_tokens_reasoning"] == 2_000
+        assert row["count"] == 1_000
+
+        coverage = store.conn.execute(
+            "SELECT batch_seen, supplement_seen FROM activity_coverage"
+        ).fetchone()
+        assert coverage == (1, 1)
+
+        store.upsert_activity([_act(reasoning=0)])
+        assert store.query_activity()[0]["total_native_tokens_reasoning"] == 2_000
 
 
 class TestQueryActivity:
@@ -89,6 +109,13 @@ class TestChartSeries:
         rows = store.query_chart("rankings_chart")
         assert len(rows) == 2
 
+        assert store.upsert_chart(
+            "rankings_chart", [ChartPoint(date="2026-07-02", values={"model-a": 300})]
+        ) == 0
+        assert store.query_chart("rankings_chart") == [
+            {"date": "2026-07-02", "slug": "model-a", "tokens": 300}
+        ]
+
     def test_different_endpoints(self, store):
         store.upsert_chart("tools", [ChartPoint(date="2026-07-02", values={"m1": 100})])
         store.upsert_chart("images", [ChartPoint(date="2026-07-02", values={"m1": 100})])
@@ -109,8 +136,26 @@ class TestSnapshots:
         assert store.table_count("snapshot_performance") == 1
 
     def test_benchmarks(self, store):
-        data = {"data": {"aaData": {"intelligence": [{"uid": "org/m-20260101", "permaslug": "org/m-20260101", "aa_name": "M", "score": 59.9}]}}}
-        assert store.snapshot_benchmarks("2026-07-02", data) == 1
+        data = {"data": {"aaData": {
+            "intelligence": [{"uid": "org/m-20260101", "permaslug": "org/m-20260101", "aa_name": "M", "score": 59.9}],
+            "coding": [{"uid": "org/m-20260101", "permaslug": "org/m-20260101", "aa_name": "M", "score": 61.0}],
+            "agentic": [{"uid": "org/m-20260101", "permaslug": "org/m-20260101", "aa_name": "M", "score": 62.0}],
+            "percentilesBySlug": {"org/m-20260101": {"intelligence": 0.9}},
+        }}}
+        assert store.snapshot_benchmarks("2026-07-02", data) == 3
+
+    def test_benchmarks_reject_unknown_shapes(self, store):
+        data = {"data": {"aaData": {"intelligence": {"unexpected": "object"}}}}
+        with pytest.raises(TypeError, match="intelligence"):
+            store.snapshot_benchmarks("2026-07-02", data)
+
+    def test_benchmarks_require_data_and_uid(self, store):
+        with pytest.raises(TypeError, match="aaData"):
+            store.snapshot_benchmarks("2026-07-02", {"data": {}})
+        with pytest.raises(ValueError, match="uid"):
+            store.snapshot_benchmarks(
+                "2026-07-02", {"data": {"aaData": {"coding": [{"score": 1.0}]}}}
+            )
 
     def test_apps(self, store):
         data = {"data": {"day": [{"app_id": 1, "rank": 1, "total_tokens": "1000", "total_requests": 10, "app": {"id": 1}}], "week": [], "month": []}}

@@ -32,10 +32,10 @@ ords dashboard --top 10              # 生成 PNG 图表
 ## 两层抓取策略
 
 `ords archive` 分两层，总 21 次请求：
-1. **批量层**: `rankings/models?view=month` — 1 次请求，400+ 模型 17 天数据（reasoning/cached 为 0）
+1. **批量层**: `rankings/models?view=day` — 1 次请求，400+ 模型前一日数据（reasoning/cached 为 0）
 2. **补全层**: Top-20 逐个 `model-activity` — 20 次请求，补全 reasoning/cached + 当天数据
 
-重复行通过 PK `(variant_permaslug, date, variant)` + `INSERT OR IGNORE` 去重。每周一次不会漏数据（17 天窗口 > 7 天间隔）。
+重复行通过 PK `(variant_permaslug, date, variant)` 去重；补全层在冲突时刷新完整 telemetry。补全层 31 天窗口保证 Top-20 日级连续，全市场批量层是每周横截面。分析规则见 `schema/model_activity.schema.json`。
 
 ## 验收标准
 
@@ -51,7 +51,7 @@ ords dashboard --top 10              # 生成 PNG 图表
 | 陷阱 | 表现 | 应对 |
 |------|------|------|
 | 短 slug 不被 model-activity 接受 | 返回空数组 | CLI 自动解析 canonical_slug（末尾 8 位日期）；手动传时需用 canonical_slug |
-| rankings/models 的 reasoning/cached 为 0 | 补全层数据与批量层不一致 | 补全层（model-activity）覆盖补全，PK 去重保证只保留有值的版本 |
+| rankings/models 的 reasoning/cached 为 0 | 直接分析会把缺失 telemetry 当真实 0 | 补全层在主键冲突时更新；历史数据仍按 `schema/model_activity.schema.json` 识别结构性 0 |
 | OpenCode submit 阻塞 | `--send-timeout 300` 导致脚本等 5 分钟 | 用 `--send-timeout 5`，session 已创建即可 |
 | 邮件发到 Resend receiving address | 邮件到了 `@example.resend.app` 而非用户邮箱 | `--to` 用 `ORDS_NOTIFY_EMAIL` 环境变量，正文用中文 |
 | rankings/models?view=month 返回累积值 | 数字比实际大 12 倍 | 用 `view=day` 拿当天实际值，不用 view=month/week |

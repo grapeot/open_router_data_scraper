@@ -21,7 +21,7 @@
 .venv/bin/ords archive --top 20
 ```
 
-这会执行两层抓取：批量层（rankings/models view=day，415 模型当天）+ 补全层（top-20 model-activity，含 reasoning/cached，31 天历史）。记录总新增行数。
+这会执行两层抓取：批量层（rankings/models view=day，约 400+ 模型前一日）+ 补全层（top-20 model-activity，含 reasoning/cached，31 天历史）。记录总新增行数。
 
 ### 2. 抓取快照和图表
 
