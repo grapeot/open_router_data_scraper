@@ -42,7 +42,6 @@ ords fetch openai/gpt-5.5 --variant nitro
 
 ```bash
 ords archive --top 20                          # 抓取 Top-20 并存入 SQLite
-ords archive --slug openai/gpt-5.5            # 抓取单模型并存储
 ords archive --top 20 --variants standard,nitro  # 多变体
 ```
 
@@ -63,6 +62,8 @@ ords dashboard --top 10                       # 对比 Top-10 模型
 ```
 
 从 SQLite 读取数据并生成 PNG 图表（prompt tokens + completion tokens 双图）。
+
+分析数据库前请先读 [`schema/model_activity.schema.json`](schema/model_activity.schema.json)。它定义字段结构、两层抓取造成的覆盖差异，以及全市场趋势、reasoning/cached、variant 聚合的正确解释方式。
 
 ## 数据字段
 

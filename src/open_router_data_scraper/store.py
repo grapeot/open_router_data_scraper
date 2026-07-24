@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS model_activity (
     PRIMARY KEY (variant_permaslug, date, variant)
 );
 
+-- Provenance for distinguishing batch structural zeros from supplemented telemetry.
+CREATE TABLE IF NOT EXISTS activity_coverage (
+    date TEXT NOT NULL,
+    variant_permaslug TEXT NOT NULL,
+    variant TEXT NOT NULL,
+    batch_seen INTEGER NOT NULL DEFAULT 0,
+    supplement_seen INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (variant_permaslug, date, variant)
+);
+
 -- Rolling: 图表时间序列
 CREATE TABLE IF NOT EXISTS chart_series (
     endpoint TEXT NOT NULL,      -- 'rankings_chart', 'tools', 'images', etc.
@@ -122,26 +132,47 @@ class Storage:
 
     # ── Rolling: model_activity ────────────────────────────────────
 
-    def upsert_activity(self, rows: list[ActivityRow]) -> int:
+    def upsert_activity(
+        self, rows: list[ActivityRow], *, enrich_existing: bool = False
+    ) -> int:
         if not rows:
             return 0
         cur = self.conn.cursor()
         inserted = 0
         for r in rows:
+            values = (
+                r.date, r.variant_permaslug, r.variant,
+                r.total_prompt_tokens, r.total_completion_tokens,
+                r.total_native_tokens_reasoning, r.total_native_tokens_cached,
+                r.count, r.total_tool_calls, r.requests_with_tool_call_errors,
+                r.num_media_prompt, r.num_media_completion,
+                r.image_output_requests, r.num_video_prompt,
+                r.video_output_seconds, r.rerank_documents,
+                r.stt_transcript_characters, r.num_audio_prompt,
+            )
             cur.execute(
                 "INSERT OR IGNORE INTO model_activity VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    r.date, r.variant_permaslug, r.variant,
-                    r.total_prompt_tokens, r.total_completion_tokens,
-                    r.total_native_tokens_reasoning, r.total_native_tokens_cached,
-                    r.count, r.total_tool_calls, r.requests_with_tool_call_errors,
-                    r.num_media_prompt, r.num_media_completion,
-                    r.image_output_requests, r.num_video_prompt,
-                    r.video_output_seconds, r.rerank_documents,
-                    r.stt_transcript_characters, r.num_audio_prompt,
-                ),
+                values,
             )
             inserted += cur.rowcount
+            if enrich_existing and cur.rowcount == 0:
+                cur.execute(
+                    """UPDATE model_activity SET
+                        total_native_tokens_reasoning=?, total_native_tokens_cached=?,
+                        total_tool_calls=?, requests_with_tool_call_errors=?
+                    WHERE date=? AND variant_permaslug=? AND variant=?""",
+                    (values[5], values[6], values[8], values[9], *values[:3]),
+                )
+            cur.execute(
+                """INSERT INTO activity_coverage VALUES (?,?,?,?,?)
+                ON CONFLICT(variant_permaslug, date, variant) DO UPDATE SET
+                    batch_seen=MAX(batch_seen, excluded.batch_seen),
+                    supplement_seen=MAX(supplement_seen, excluded.supplement_seen)""",
+                (
+                    r.date, r.variant_permaslug, r.variant,
+                    int(not enrich_existing), int(enrich_existing),
+                ),
+            )
         self.conn.commit()
         return inserted
 
@@ -188,12 +219,30 @@ class Storage:
         cur = self.conn.cursor()
         inserted = 0
         for pt in points:
+            slugs = list(pt.values)
+            if slugs:
+                placeholders = ",".join("?" for _ in slugs)
+                cur.execute(
+                    f"""DELETE FROM chart_series
+                    WHERE endpoint=? AND date=? AND slug NOT IN ({placeholders})""",
+                    [endpoint, pt.date, *slugs],
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM chart_series WHERE endpoint=? AND date=?",
+                    (endpoint, pt.date),
+                )
             for slug, tokens in pt.values.items():
                 cur.execute(
                     "INSERT OR IGNORE INTO chart_series VALUES (?,?,?,?)",
                     (endpoint, pt.date, slug, tokens),
                 )
                 inserted += cur.rowcount
+                if cur.rowcount == 0:
+                    cur.execute(
+                        "UPDATE chart_series SET tokens=? WHERE endpoint=? AND date=? AND slug=?",
+                        (tokens, endpoint, pt.date, slug),
+                    )
         self.conn.commit()
         return inserted
 
@@ -244,11 +293,22 @@ class Storage:
     def snapshot_benchmarks(self, snapshot_date: str, data: dict) -> int:
         cur = self.conn.cursor()
         n = 0
-        aa = data.get("data", {}).get("aaData", {})
-        if not aa:
-            aa = data.get("aaData", {})
+        inner = data.get("data", data)
+        aa = inner.get("aaData") if isinstance(inner, dict) else None
+        if not isinstance(aa, dict) or not aa:
+            raise TypeError("benchmark response must contain a non-empty aaData object")
+        categories = 0
         for category, items in aa.items():
+            if category == "percentilesBySlug":
+                continue
+            if not isinstance(items, list):
+                raise TypeError(f"benchmark category {category!r} must be a list")
+            categories += 1
             for item in items:
+                if not isinstance(item, dict):
+                    raise TypeError(f"benchmark item in {category!r} must be an object")
+                if not item.get("uid"):
+                    raise ValueError(f"benchmark item in {category!r} must have a uid")
                 cur.execute(
                     "INSERT OR IGNORE INTO snapshot_benchmarks VALUES (?,?,?,?,?,?)",
                     (
@@ -259,6 +319,8 @@ class Storage:
                     ),
                 )
                 n += cur.rowcount
+        if categories == 0:
+            raise ValueError("benchmark response contains no benchmark categories")
         self.conn.commit()
         return n
 

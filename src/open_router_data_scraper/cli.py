@@ -92,7 +92,7 @@ def cmd_archive(args: argparse.Namespace) -> int:
                 except Exception as e:
                     print(f"# skip {perma} variant={v}: {e}", file=sys.stderr)
                     continue
-                n = store.upsert_activity(rows)
+                n = store.upsert_activity(rows, enrich_existing=True)
                 total_supplement += n
                 if rows:
                     print(f"  {perma:<55} v={v:<8} days={len(rows):>3} new={n:>3}  "

@@ -1,8 +1,8 @@
 """HTTP client for OpenRouter's undocumented frontend stats endpoints.
 
 端点分两类：
-  - Rolling data（按天/周累积，INSERT OR IGNORE 去重）：
-    - /api/frontend/v1/rankings/models?view=month  — 全模型 17 天逐日活动（批量层）
+  - Rolling data（按天/周累积，按主键合并）：
+    - /api/frontend/v1/rankings/models?view=day    — 全模型前一日活动（批量层）
     - /api/frontend/v1/stats/model-activity       — 单模型逐日活动（补全层，含 reasoning/cached）
     - /api/frontend/v1/rankings/model-rankings-chart — Top-10 模型周度排名 52 周
     - /api/frontend/v1/rankings/tools              — tool call 用量时间序列

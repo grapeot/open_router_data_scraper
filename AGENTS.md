@@ -35,7 +35,6 @@ open_router_data_scraper/
 ords discover --top 20                    # 列出 Top-N 模型
 ords fetch z-ai/glm-5.2                   # 抓取单模型用量并打印
 ords archive --top 20                     # 抓取 Top-N 并存入 SQLite（去重）
-ords archive --slug openai/gpt-5.5        # 抓取单模型并存储
 ords query --slug glm-5.2                 # 从 DB 查询历史数据
 ords models                              # 列出 DB 中已追踪的模型
 ords dashboard --slug glm-5.2             # 生成 PNG 图表
@@ -45,5 +44,5 @@ ords dashboard --slug glm-5.2             # 生成 PNG 图表
 
 - 所有 OpenRouter 端点无需鉴权，仅需 `Referer: https://openrouter.ai/`
 - `permaslug` 必须是 canonical_slug（带日期后缀，如 `z-ai/glm-5.2-20260616`），CLI 自动解析
-- SQLite PK = `(variant_permaslug, date, variant)`，`INSERT OR IGNORE` 去重
+- SQLite PK = `(variant_permaslug, date, variant)`；批量层去重，补全层更新同主键的 enrichment telemetry
 - 服务端有缓存（`cachedAt` 字段），短时间内重复请求结果一致
