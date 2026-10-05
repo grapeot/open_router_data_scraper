@@ -5,6 +5,7 @@
   ords fetch <slug> [--variant V]        — 抓取单模型逐日用量并打印
   ords archive [--top N] [--variants V]  — 两层抓取：rankings/models 批量 + top-N 补全，存入 SQLite
   ords snapshot                           — 抓取所有快照端点（task-spend/performance/benchmarks/apps）+ 图表时间序列
+  ords digest [--top N] [--output P]      — 从 DB 计算确定性每周 digest packet（md + json）
   ords query [--slug S] [--variant V] [--from D] [--to D]  — 从 DB 查询
   ords models                             — 列出 DB 中已追踪模型
   ords dashboard [--slug S] [--top N]     — 生成 PNG 图表
@@ -16,6 +17,7 @@ import sys
 from datetime import datetime, timezone
 
 from .client import OpenRouterClient
+from .digest import build_packet, render_markdown
 from .store import Storage
 
 
@@ -142,6 +144,33 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_digest(args: argparse.Namespace) -> int:
+    """Compute the deterministic weekly digest packet from SQLite."""
+    import json
+    from pathlib import Path
+
+    with Storage(args.db) as store:
+        try:
+            packet = build_packet(store.conn, top_n=args.top)
+        except ValueError as e:
+            print(f"# {e}", file=sys.stderr)
+            return 1
+    markdown = render_markdown(packet)
+
+    out = args.output or f"data/digest_{packet['quality']['newest_date']}.md"
+    out_path = Path(out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(markdown, encoding="utf-8")
+    json_path = out_path.with_suffix(".json")
+    json_path.write_text(
+        json.dumps(packet, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    print(markdown)
+    print(f"# wrote {out_path} and {json_path}", file=sys.stderr)
+    return 0
+
+
 def cmd_query(args: argparse.Namespace) -> int:
     with Storage(args.db) as store:
         rows = store.query_activity(
@@ -263,6 +292,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("snapshot", help="Scrape all snapshot + chart endpoints to SQLite")
     _add_db(sp)
     sp.set_defaults(func=cmd_snapshot)
+
+    sp = sub.add_parser("digest", help="Compute the deterministic weekly digest packet")
+    _add_db(sp)
+    sp.add_argument("--top", type=int, default=20)
+    sp.add_argument("--output", default=None, help="Markdown output path (default: data/digest_<date>.md)")
+    sp.set_defaults(func=cmd_digest)
 
     sp = sub.add_parser("query", help="Query stored data from SQLite")
     _add_db(sp)
