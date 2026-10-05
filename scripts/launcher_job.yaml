@@ -3,9 +3,12 @@
 # Schedule: every Friday 09:00 local time.
 #
 # Environment variables needed:
-#   OPENCODE_SKILL_DIR  — absolute path to opencode_skill project
-#   RESEND_SKILL_DIR    — absolute path to resend_email_skill project
-#   ORDS_NOTIFY_EMAIL   — your email address for failure notifications
+#   OPENCODE_SKILL_DIR        — absolute path to the OpenCode skill project (required)
+#   RESEND_SKILL_DIR          — absolute path to the email skill project (required)
+#   ORDS_NOTIFY_EMAIL         — recipient address for digest / failure notifications (required)
+#   ORDS_SEARCH_SKILL_PATH    — path to the web-search skill used for enrichment (required)
+#   ORDS_WRITING_SKILL_DIR    — directory holding the drafting CLI + writing workflow (required)
+#   ORDS_AGY_BIN              — drafting CLI binary (optional, default: agy)
 #
 # Example:
 #
@@ -19,16 +22,18 @@
 #       OPENCODE_SKILL_DIR: /path/to/opencode_skill
 #       RESEND_SKILL_DIR: /path/to/resend_email_skill
 #       ORDS_NOTIFY_EMAIL: your-email@example.com
+#       ORDS_SEARCH_SKILL_PATH: /path/to/search_skill.md
+#       ORDS_WRITING_SKILL_DIR: /path/to/writing_skills
 #     schedule:
 #       type: weekly
 #       days_of_week: [fri]
 #       time: "09:00"
 #       timezone: America/Los_Angeles
-#     timeout: 600
+#     timeout: 2400
 
 label: ords_weekly_scrape
 schedule: weekly
 days_of_week: [fri]
 time: "09:00"
 timezone: America/Los_Angeles
-timeout: 600
+timeout: 2400

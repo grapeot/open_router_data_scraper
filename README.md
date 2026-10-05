@@ -63,6 +63,14 @@ ords dashboard --top 10                       # 对比 Top-10 模型
 
 从 SQLite 读取数据并生成 PNG 图表（prompt tokens + completion tokens 双图）。
 
+### 6. Digest — 确定性周度 packet
+
+```bash
+ords digest --top 20                          # 写出 data/digest_<date>.md + .json
+```
+
+把混合来源的活动数据转成一份可审计的 packet：数据质量门（partial day、混批日、结构性 0）、全市场总量与 provider 份额、top-N 固定 cohort 的周环比与 cache/reasoning 形态、新面孔与形态异常、外部富集候选。所有派生指标都按 `schema/model_activity.schema.json` 的 `metric_semantics` 计算。该命令不访问网络、不调用模型；下游 agent 读 packet 成文，不自行重算。
+
 分析数据库前请先读 [`schema/model_activity.schema.json`](schema/model_activity.schema.json)。它定义字段结构、两层抓取造成的覆盖差异，以及全市场趋势、reasoning/cached、variant 聚合的正确解释方式。
 
 ## 数据字段

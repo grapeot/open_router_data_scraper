@@ -12,7 +12,7 @@
 
 ## 可用资源
 
-- **CLI**: `.venv/bin/ords`，工作目录 `adhoc_jobs/open_router_data_scraper/`
+- **CLI**: `.venv/bin/ords`，工作目录为本项目根目录
 - **Python 环境**: `uv venv .venv && uv pip install -e '.[viz,dev]'`
 - **数据端点**: 所有端点无需鉴权，仅需 `Referer: https://openrouter.ai/`。详见 `docs/rfc.md` 端点清单
 - **SQLite**: `data/ords.db`（.gitignore），schema 详见 `src/open_router_data_scraper/store.py`
@@ -24,10 +24,17 @@ ords discover --top 20               # Top-N 模型列表
 ords fetch <slug>                    # 抓取单模型逐日用量并打印
 ords archive --top 20                # 两层抓取存入 SQLite（批量 + 补全）
 ords snapshot                        # 快照 + 图表时间序列存入 SQLite
+ords digest --top 20                  # 计算确定性周度 packet（data/digest_<date>.md + .json）
 ords query --slug <slug>             # 从 DB 查询历史
 ords models                          # 列出 DB 中已追踪模型
 ords dashboard --top 10              # 生成 PNG 图表
 ```
+
+## 周度解读（digest）
+
+`ords digest` 是「算」：从 SQLite 确定性产出 packet，含数据质量门（partial day / 混批日 / 结构性 0）、市场总量与 provider 份额、top-N 固定 cohort、新面孔与形态异常、富集候选。它是后续成文的唯一数字来源。
+
+关键口径（都已被测试锁定，也是踩过坑的教训）：缓存率是 `cached/prompt` 不是 `/total`；只有 `COUNT(*)>=300` 且非混批的日期算「干净全市场日」，市场环比只用这些天；聚合 cached 超过 prompt 的日期是混批行，必须从面板和市场趋势一并剔除（如 09-25）；reasoning 率用同窗口的 `reasoning/completion`。下游 agent 读 packet 成文，不自行重算指标。
 
 ## 两层抓取策略
 
@@ -41,8 +48,10 @@ ords dashboard --top 10              # 生成 PNG 图表
 
 1. `ords archive --top 20` 执行后 SQLite 中有 400+ 模型的活动数据
 2. `ords snapshot` 执行后 SQLite 中有图表时间序列 + 快照数据
-3. 重复执行 `ords archive` 不产生重复行
-4. `ords dashboard` 生成有效 PNG
+3. `ords digest --top 20` 产出 `data/digest_<date>.md` 与 `.json`，且质量门与口径符合 schema 契约（pytest tests/test_digest.py）
+4. 重复执行 `ords archive` 不产生重复行
+5. `ords dashboard` 生成有效 PNG
+6. 空库时 `ords digest` 打印清晰错误并返回 1，不抛 traceback
 5. `pytest tests/ --ignore=tests/test_live.py` 全部通过
 6. `ORDS_ENABLE_LIVE_TESTS=1 pytest tests/test_live.py` 对真实 API 验证通过
 

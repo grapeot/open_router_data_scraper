@@ -35,6 +35,8 @@ open_router_data_scraper/
 ords discover --top 20                    # 列出 Top-N 模型
 ords fetch z-ai/glm-5.2                   # 抓取单模型用量并打印
 ords archive --top 20                     # 抓取 Top-N 并存入 SQLite（去重）
+ords snapshot                             # 快照 + 图表时间序列
+ords digest --top 20                      # 确定性周度 packet（data/digest_<date>.md + .json）
 ords query --slug glm-5.2                 # 从 DB 查询历史数据
 ords models                              # 列出 DB 中已追踪的模型
 ords dashboard --slug glm-5.2             # 生成 PNG 图表

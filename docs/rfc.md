@@ -17,16 +17,18 @@
 │  1. ords archive --top 20   (两层抓取)        │
 │  2. ords snapshot           (快照+图表)       │
 │  3. ords query              (sanity check)    │
-│  4. ords dashboard          (更新 PNG)        │
-│  5. if 失败: 调查 + 修复                      │
-│  6. if 失败 or dry_run: 发邮件                │
-└──────┬───────────────────┬───────────────────┘
-       │                   │
-       ▼                   ▼
-┌──────────────┐   ┌──────────────┐
-│  SQLite DB    │   │  Resend Email │
-│  data/ords.db │   │  → Outlook    │
-└──────────────┘   └──────────────┘
+│  4. ords digest             (确定性 packet)    │
+│  5. Firecrawl 富集          (软依赖)          │
+│  6. agy 起草 + 主 Agent 审核 (成文)           │
+│  7. ords dashboard          (更新 PNG)        │
+│  8. 成功: 发 digest 邮件 / 失败: 发失败说明    │
+└──────┬───────────────┬───────────────┬────────┘
+       │               │               │
+       ▼               ▼               ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│  SQLite DB    │ │ docs/weekly/  │ │  Resend Email │
+│  data/ords.db │ │ + data/digest │ │  → Outlook    │
+└──────────────┘ └──────────────┘ └──────────────┘
 ```
 
 ## 数据端点
@@ -62,6 +64,23 @@
 2. **补全层**：对 Top-20 逐个请求 `model-activity` — 20 次请求，补全 31 天 reasoning/cached/tool telemetry + 当天数据。新主键插入；与批量层冲突的主键更新为补全层数据。
 
 总请求：21 次。数据覆盖：400+ 模型（基础字段）+ Top-20（完整字段）。
+
+## Digest 数据流
+
+```
+data/ords.db ──ords digest──> data/digest_<date>.md  (人读)
+                            └> data/digest_<date>.json (富集 + 成文的机器输入)
+                                    │
+        Firecrawl 富集 <───────────┘ (enrichment_candidates)
+                                    │
+        agy 起草 article.md ────────┘ (固定大纲，中文 400–800 字)
+                                    │
+        主 Agent 事实审核 ──────────> docs/weekly/<date>.md
+                                    │
+                                    └──> 邮件正文 (Resend)
+```
+
+`ords digest` 是纯确定性计算，不访问网络、不调用模型，输入只有 SQLite 与 `schema/model_activity.schema.json` 的契约。它的正确性由 `tests/test_digest.py` 用会失败的反例锁定：混批日从面板与市场剔除、partial newest day 排除（最新日若是全市场日则保留）、缓存率口径（`cached/prompt`）、reasoning 率同窗口分母（`reasoning/completion`）、结构性 0 不进面板比率也不报异常、cohort 成员资格、空库返回清晰错误。
 
 ## 每周一次的安全性
 

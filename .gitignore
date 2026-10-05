@@ -5,8 +5,7 @@ __pycache__/
 dist/
 build/
 .env
-data/*.db
-data/*.db-journal
-data/*.json
-data/*.png
+/data/
+/tmp/
+/config/launcher.yaml
 .pytest_cache/
