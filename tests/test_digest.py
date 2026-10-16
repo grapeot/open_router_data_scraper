@@ -52,6 +52,44 @@ def _day(store, date, slugs, prompt=100_000, completion=5_000, cached=80_000,
     ])
 
 
+def test_dashboard_ranks_traffic_excludes_blank_and_partial(tmp_path, monkeypatch):
+    pytest.importorskip("matplotlib")
+    from argparse import Namespace
+    from open_router_data_scraper.cli import cmd_dashboard
+
+    db = tmp_path / "dashboard.db"
+    with Storage(db_path=db) as store:
+        _batch_pad(store, "2026-10-15")
+        store.upsert_activity([
+            _act("2026-10-15", "", prompt=1_000_000),
+            _act("2026-10-15", "org/a", prompt=100),
+            _act("2026-10-15", "org/z", prompt=100_000),
+            _act("2026-10-16", "org/z", prompt=50_000),
+        ])
+    queried = []
+    original = Storage.query_activity
+
+    def query(self, **kwargs):
+        queried.append(kwargs["slug"])
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(Storage, "query_activity", query)
+    import matplotlib.axes
+    dates_plotted = []
+    original_plot = matplotlib.axes.Axes.plot
+
+    def plot(self, dates, *args, **kwargs):
+        dates_plotted.extend(d.strftime("%Y-%m-%d") for d in dates)
+        return original_plot(self, dates, *args, **kwargs)
+
+    monkeypatch.setattr(matplotlib.axes.Axes, "plot", plot)
+    output = tmp_path / "dashboard.png"
+    assert cmd_dashboard(Namespace(db=db, slug=None, top=1, output=str(output))) == 0
+    assert queried == ["org/z"]
+    assert dates_plotted == ["2026-10-15", "2026-10-15"]
+    assert output.stat().st_size > 0
+
+
 class TestQualityGate:
     def test_empty_db_raises(self, tmp_path):
         with Storage(db_path=tmp_path / "t.db") as store:

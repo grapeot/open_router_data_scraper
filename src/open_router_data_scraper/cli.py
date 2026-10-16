@@ -224,11 +224,29 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     from datetime import datetime as dt
 
     with Storage(args.db) as store:
+        try:
+            packet = build_packet(store.conn, top_n=args.top)
+        except ValueError as e:
+            print(f"# {e}", file=sys.stderr)
+            return 1
+        excluded_days = set(packet["quality"]["contaminated_days"])
+        if not packet["quality"]["newest_is_market_day"]:
+            excluded_days.add(packet["quality"]["newest_date"])
         if args.slug:
             slugs = [args.slug]
         else:
-            all_models = store.tracked_models()
-            slugs = all_models[:args.top] if all_models else []
+            market_days = packet["quality"]["market_days"]
+            if not market_days:
+                print("# no clean whole-market day for ranking.", file=sys.stderr)
+                return 1
+            slugs = [row[0] for row in store.conn.execute(
+                """SELECT variant_permaslug FROM model_activity
+                WHERE substr(date, 1, 10) = ? AND variant = 'standard'
+                  AND trim(variant_permaslug) != ''
+                GROUP BY variant_permaslug
+                ORDER BY SUM(total_prompt_tokens + total_completion_tokens) DESC
+                LIMIT ?""", (market_days[-1], args.top)
+            )]
         if not slugs:
             print("# no data in DB. Run `ords archive` first.", file=sys.stderr)
             return 1
@@ -236,6 +254,7 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         fig, axes = plt.subplots(2, 1, figsize=(14, 9), sharex=True)
         for slug in slugs:
             rows = store.query_activity(slug=slug, variant="standard")
+            rows = [r for r in rows if r["date"][:10] not in excluded_days]
             if not rows:
                 continue
             dates = [dt.strptime(r["date"][:10], "%Y-%m-%d") for r in rows]
